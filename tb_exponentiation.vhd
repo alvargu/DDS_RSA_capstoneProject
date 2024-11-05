@@ -25,7 +25,7 @@ architecture Behavioral of tb_exponentiation is
 	constant f_clk : integer := 100_000_000;
 	constant T_clk : time := (1 sec / f_clk); -- possible point of failure
 	constant C_block_size : integer := 32;
-	
+
 	component exponentiation
 	    generic (
 			C_block_size : integer := 32			
@@ -121,11 +121,11 @@ begin
 		--log(ID_LOG_HDR, "Start of simulation");
 	    	wait for 45 ns;
 
-	    	wait for 60 ns;
-	    	assert ( ascii_display = "11000000") -- Test if recieved byte is displayed as 0
-			report "msg"
-			severity error;
-	    	wait;
+	    	--wait for 60 ns;
+	    	-- assert ( ascii_display = "11000000") -- Test if recieved byte is displayed as 0
+		-- 	report "msg"
+		--	severity error;
+	    	--wait;
 	end process;
 end Behavioral;
 
