@@ -1,6 +1,18 @@
+-- IEEE library instantiation
 library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
 
+-- UVVM utils library instantiation
+--library UVVM_util;
+--context UVVM_util.UVVM_util_context;
+
+-----------------------------------------------------------------------------
+-- entity : tb_exponentiation
+-- purpose: Simple test of single rsa core
+-- type   : testbench
+-- inputs : none
+-----------------------------------------------------------------------------
 entity tb_exponentiation is
 	generic (
 		-- set clk frequency here
@@ -9,6 +21,9 @@ entity tb_exponentiation is
 	);
 end tb_exponentiation;
 
+-----------------------------------------------------------------------------
+-- Beginning of architechture
+-----------------------------------------------------------------------------
 architecture Behavioral of tb_exponentiation is
 
 	component exponentiation
@@ -74,18 +89,19 @@ begin
 	-----------------------------------------------------------------------------
 	p_clk : process
 	begin
-		clk <= not clk;
-		wait for T_clk/2;
+		clk <= not clk after T_clk/2;
 	end process p_clk;
 
-
-	key_e <= "00101101";        -- To small change
-	key_n <= "10001101";        -- To small change
+	p_key_set : process
+  	begin
+		key_e <= "00101101";        -- To small change
+		key_n <= "10001101";        -- To small change
+	end process;
 
 	-----------------------------------------------------------------------------
 	-- Instantiations for unit under test
 	-----------------------------------------------------------------------------
-	UUT : exponentiation_test 
+	UUT : exponentiation_test
 	    port map 
 	     (
 			clk => clk,
@@ -99,10 +115,17 @@ begin
 		);
 
 	msg_test : process (all) is
+
+
 	begin
-	    wait for 45 ns;
-	    wait for 60 ns;
-	    wait;
+		log(ID_LOG_HDR, "Start of simulation");
+	    	wait for 45 ns;
+
+	    	wait for 60 ns;
+	    	assert ( ascii_display = "11000000") -- Test if recieved byte is displayed as 0
+			report "msg"
+			severity error;
+	    	wait;
 	end process;
 end Behavioral;
 
