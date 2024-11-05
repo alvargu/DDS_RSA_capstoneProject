@@ -24,7 +24,8 @@ architecture Behavioral of tb_exponentiation is
 	-- set clk frequency here
 	constant f_clk : integer := 100_000_000;
 	constant T_clk : time := (1 sec / f_clk); -- possible point of failure
-
+	constant C_block_size : integer := 32;
+	
 	component exponentiation
 	    generic (
 			C_block_size : integer := 32			
@@ -37,8 +38,8 @@ architecture Behavioral of tb_exponentiation is
 			ready_in	: out std_logic;
 
 			--input data
-			message 	: in STD_LOGIC_VECTOR( C_block_size-1 downto 0 );
-			key 		: in STD_LOGIC_VECTOR( C_block_size-1 downto 0 );
+			message 	: in STD_LOGIC_VECTOR(C_block_size-1 downto 0);
+			key 		: in STD_LOGIC_VECTOR(C_block_size-1 downto 0);
 
 			--ouput controll
 			ready_out	: in std_logic;
