@@ -155,14 +155,14 @@ begin
             if (checkbit_var = '1') then
                 R_temp := std_logic_vector(unsigned(R_temp) + unsigned(b_reg));
             end if;
-            if (unsigned(R_temp) >= unsigned(n)) then   -- Rbign defineres/sjekkes i en egen process?
+            if (unsigned(R_temp) >= unsigned(n)) then   -- Rbign defineres/sjekkes i en egen process? tror ikke det
                 Rbign <= '1';
             else
                 Rbign <= '0';
             end if;
         when COMPARE_N => 
             R_temp := std_logic_vector(unsigned(R_reg) - unsigned(n));
-            if (unsigned(R_temp) >= unsigned(n)) then   -- Rbign defineres/sjekkes i en egen process?
+            if (unsigned(R_temp) >= unsigned(n)) then   -- Rbign defineres/sjekkes i en egen process? tror ikke det
                 Rbign <= '1';
             else
                 Rbign <= '0';
