@@ -3,7 +3,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 -- Seems to work! Running simulation will test (84^45 mod 141) which results in 108. 
-entity exponentiation2 is
+entity exponentiation is
 	generic (
 		C_block_size : integer := 256
 	);
@@ -30,9 +30,9 @@ entity exponentiation2 is
 		clk 		: in STD_LOGIC;
 		reset_n 	: in STD_LOGIC
 	);
-end exponentiation2;
+end exponentiation;
 
-architecture Behavioral of exponentiation2 is
+architecture Behavioral of exponentiation is
 
     component Blakleytesting
         port ( clk : in std_logic;

@@ -70,8 +70,8 @@ architecture Behavioral of tb_exponentiation is
 	signal valid_in	: std_logic := '0';		-- edit
 	signal ready_in	: std_logic := '0';		-- check if correct
 		-- IO data
-	signal msgin_data	: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
-	signal msgout_data 	: std_logic_vector(C_block_size-1 downto 0);
+	signal message	: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
+	signal result 	: std_logic_vector(C_block_size-1 downto 0);
 		-- 
 	signal key_e 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
 	signal key_n 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
@@ -101,17 +101,17 @@ begin
 	-----------------------------------------------------------------------------
 	-- Instantiations for unit under test
 	-----------------------------------------------------------------------------
-	UUT : exponentiation_test
+	UUT : exponentiation
 	    port map 
 	     (
 			clk => clk,
-	        	rst => rst,
+	        	rst => reset_n,
 	        	valid_in => valid_in,
 		   	ready_in => ready_in,
-	        	msgin_data => msgin_data,
+	        	message => message,
 	        	key_e => key_e,
 	        	key_n => key_n,
-	        	msgout_data => msgout_data
+	        	result => result
 		);
 
 	msg_test : process
