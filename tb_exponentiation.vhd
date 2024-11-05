@@ -77,8 +77,8 @@ architecture Behavioral of tb_exponentiation is
 	signal key_n 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
 
 		-- ouput controll
-	signal ready_out	: std_logic '0'; 		-- edit
-	signal valid_out	: std_logic '0'; 		-- check if correct 
+	signal ready_out	: std_logic := '0'; 	-- edit
+	signal valid_out	: std_logic := '0'; 	-- check if correct 
 
 begin
 
@@ -114,7 +114,7 @@ begin
 	        	msgout_data => msgout_data
 		);
 
-	msg_test : process (all) is
+	msg_test : process (clk) is
 
 
 	begin
