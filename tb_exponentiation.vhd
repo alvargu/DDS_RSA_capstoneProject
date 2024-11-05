@@ -14,17 +14,16 @@ use IEEE.numeric_std.all;
 -- inputs : none
 -----------------------------------------------------------------------------
 entity tb_exponentiation is
-	generic (
-		-- set clk frequency here
-		f_clk : integer := 100_000_000;
-		T_clk : time := (1 sec / f_clk) -- possible point of failure
-	);
 end tb_exponentiation;
 
 -----------------------------------------------------------------------------
 -- Beginning of architechture
 -----------------------------------------------------------------------------
 architecture Behavioral of tb_exponentiation is
+
+	-- set clk frequency here
+	constant f_clk : integer := 100_000_000;
+	constant T_clk : time := (1 sec / f_clk); -- possible point of failure
 
 	component exponentiation
 	    generic (
