@@ -94,8 +94,8 @@ begin
 
 	p_key_set : process
   	begin
-		key_e <= "00101101", (others => '0');        -- To small change
-		key_n <= "10001101", (others => '0');        -- To small change
+		key_e <= "00101101" & (others => '0');        -- To small change
+		key_n <= "10001101" & (others => '0');        -- To small change
 	end process;
 
 	-----------------------------------------------------------------------------
