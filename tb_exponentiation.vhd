@@ -118,7 +118,7 @@ begin
 
 
 	begin
-		log(ID_LOG_HDR, "Start of simulation");
+		--log(ID_LOG_HDR, "Start of simulation");
 	    	wait for 45 ns;
 
 	    	wait for 60 ns;
