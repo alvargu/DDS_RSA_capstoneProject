@@ -27,3 +27,4 @@ entity rsa_control is
 		clk 		: in std_logic;
 		reset_n 	: in std_logic
      );
+end entity;
