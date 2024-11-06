@@ -3,7 +3,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 -- Seems to work! Running simulation will test (84^45 mod 141) which results in 108. 
-entity exponentiation is
+entity exponentiation2 is
 	generic (
 		C_block_size : integer := 256
 	);
@@ -30,9 +30,9 @@ entity exponentiation is
 		clk 		: in STD_LOGIC;
 		reset_n 	: in STD_LOGIC
 	);
-end exponentiation;
+end exponentiation2;
 
-architecture Behavioral of exponentiation is
+architecture Behavioral of exponentiation2 is
 
     component Blakleytesting
         port ( clk : in std_logic;
@@ -58,7 +58,7 @@ architecture Behavioral of exponentiation is
     signal mblakleydone : std_logic := '0';
     signal counter, counter_nxt : std_logic_vector(7 downto 0);
 
-    type state is (IDLE, LOAD, FIRSTBIT, CBLAKLEY, SHIFTBIT, MBLAKLEY, BITDONE);
+    type state is (IDLE, LOAD, FIRSTBIT, CBLAKLEY, SHIFTBIT, MBLAKLEY, BITDONE, READY_TO_SEND);
     signal curr_state, next_state : state;
 
 begin
@@ -94,17 +94,19 @@ begin
         end if;
     end process;
 
-    process(curr_state, valid_in, cblakleydone, mblakleydone, counter)
+    process(curr_state, valid_in, cblakleydone, mblakleydone, counter, ready_out)
     begin
         case(curr_state) is 
             when IDLE =>
-            ready_in <= '0';
+                ready_in <= '1';
+                valid_out <= '0';
                 if (valid_in = '1') then
                     next_state <= LOAD;
                 else
                     next_state <= IDLE;
                 end if;
             when LOAD =>
+                ready_in <= '0';
                 next_state <= FIRSTBIT;
             when FIRSTBIT => 
                 next_state <= CBLAKLEY;
@@ -128,12 +130,19 @@ begin
                 end if;
             when BITDONE => 
                 if (counter >= C_block_size-1) then
-                    next_state <= IDLE;
-                    ready_in <= '1';
+                    next_state <= READY_TO_SEND;
                 else
                     next_state <= CBLAKLEY;
                 end if;
+            when READY_TO_SEND =>
+                valid_out <= '1';
+                if (ready_out = '1') then
+                    next_state <= IDLE;
+                else
+                    next_state <= READY_TO_SEND;
+                end if;
             when others => 
+                ready_in <= '1';
                 if (valid_in = '1') then
                     next_state <= LOAD;
                 else
@@ -142,9 +151,6 @@ begin
         end case;
     end process;
 
-
-    ready_in <= ready_out;
-	valid_out <= valid_in;
     process(clk, reset_n)
     begin
         if (reset_n = '0') then
@@ -169,7 +175,7 @@ begin
         end if;
     end process;
 
-    process(curr_state, message, key, modulus, ereg, mreg, cblakleydone, mblakleydone)
+    process(curr_state, message, key, modulus, ereg, mreg, cblakleydone, mblakleydone, ready_out)
     variable checkbit_var : std_logic := '0';
     variable c_temp : std_logic_vector(C_block_size-1 downto 0);
     begin
@@ -215,6 +221,10 @@ begin
                 end if;
             when BITDONE => 
                 counter_nxt <= counter + 1;
+            WHEN READY_TO_SEND =>
+                if (ready_out = '1') then
+                    result <= creg;
+                end if;
             when others =>
                 mreg_nxt <= (others => '0');
                 ereg_nxt <= (others => '0');
@@ -228,13 +238,5 @@ begin
         creg_nxt <= c_temp;
         checkbit_nxt <= checkbit_var;
     end process;
-    
-    --process(clk, ready_out)
-    --begin
-    --if (clk'event and clk = '1') then
-        --if (ready_out = '1') then
-    result <= creg;
-        --end if;
-   -- end if;
-    --end process;
+ 
 end Behavioral;
