@@ -4,6 +4,9 @@ use IEEE.NUMERIC_STD.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity rsa_control is
+     generic(
+          C_block_size : integer := 32
+     );
      port(
           --input controll
 		valid_in	: in std_logic;

@@ -48,9 +48,9 @@ UUT : Blakley port map ( clk => clk,
 
 process
 begin
-    wait for 45ns;
+    wait for 45 ns;
     start <= '1';
-    wait for 60ns;
+    wait for 60 ns;
     start <= '0';
     wait;
 end process;
