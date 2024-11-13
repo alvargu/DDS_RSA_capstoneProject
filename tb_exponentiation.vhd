@@ -72,7 +72,7 @@ architecture Behavioral of tb_exponentiation is
 		-- IO data
 	signal message	: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
 	signal result 	: std_logic_vector(C_block_size-1 downto 0);
-		-- 
+		-- encryption keys
 	signal key_e 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
 	signal key_n 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
 
@@ -119,20 +119,23 @@ begin
 
 	begin
 		--log(ID_LOG_HDR, "Start of simulation");
+		-- partial template for how to test message values alongside input output controll
 	    	wait for 45 ns;
-
-	    	--wait for 60 ns;
-	    	-- assert ( ascii_display = "11000000") -- Test if recieved byte is displayed as 0
-		-- 	report "msg"
-		--	severity error;
-	    	--wait;
+		message <= "00000000000000000000000000101101";
+		valid_in <= '1';
+		wait until (valid_out = '1') for 10 us;
+	    	assert (valid_out = '1') -- 
+			report "Incorrect "
+			severity error;
+		assert ( result = "00000000000000000000000011000000") -- Test if result of cryptation is correct
+			report "Incorrect "
+			severity error;
+	    	wait;
 	end process;
 end Behavioral;
 
-
--- 10 - 20 key sett
-
--- ascii 
-
--- rdy bits correct
--- 
+-- Need tested:
+-- different key setts can be adjusted manually but...
+-- different message values checked against result from running high level code
+-- utility bits functioning as needed
+-- input and output controll functioning as intended
