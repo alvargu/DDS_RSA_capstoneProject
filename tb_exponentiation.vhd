@@ -68,15 +68,9 @@ architecture Behavioral of tb_exponentiation is
 		-- IO data
 	signal message	: std_logic_vector(C_block_size-1 downto 0); --:= (others => '0');
 	signal result 	: std_logic_vector(C_block_size-1 downto 0);
-<<<<<<< HEAD
-		-- encryption keys
-	signal key_e 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
-	signal key_n 		: std_logic_vector(C_block_size-1 downto 0) := (others => '0');
-=======
 		-- 
 	signal key 		: std_logic_vector(C_block_size-1 downto 0); --:= (others => '0');
 	signal modulus 		: std_logic_vector(C_block_size-1 downto 0); --:= (others => '0');
->>>>>>> 2896044b592c1f170a138e805cb192d6a8443254
 
 		-- ouput controll
 	signal ready_out	: std_logic := '0'; 	-- edit
@@ -189,29 +183,6 @@ begin
 	-----------------------------------------------------------------------------
 	msg_test : process
 	begin
-<<<<<<< HEAD
-		--log(ID_LOG_HDR, "Start of simulation");
-		-- partial template for how to test message values alongside input output controll
-	    	wait for 45 ns;
-		message <= "00000000000000000000000000101101";
-		valid_in <= '1';
-		wait until (valid_out = '1') for 10 us;
-	    	assert (valid_out = '1') -- 
-			report "Incorrect "
-			severity error;
-		assert ( result = "00000000000000000000000011000000") -- Test if result of cryptation is correct
-			report "Incorrect "
-			severity error;
-	    	wait;
-	end process;
-end Behavioral;
-
--- Need tested:
--- different key setts can be adjusted manually but...
--- different message values checked against result from running high level code
--- utility bits functioning as needed
--- input and output controll functioning as intended
-=======
 	--log(ID_LOG_HDR, "Start of simulation");
 	message(C_block_size-1 downto Testing_bits) <= (others => '0');
        message(Testing_bits-1 downto 0) <= "01000111"; -- Decimal 72, or ASCII 'G'. Expected result: 2
@@ -240,10 +211,8 @@ end Behavioral;
 end Behavioral;
 
 
--- 10 - 20 key sett
-
--- ascii 
-
--- rdy bits correct
--- 
->>>>>>> 2896044b592c1f170a138e805cb192d6a8443254
+-- Need tested:
+-- different key setts can be adjusted manually but...
+-- different message values checked against result from running high level code
+-- utility bits functioning as needed
+-- input and output controll functioning as intended
