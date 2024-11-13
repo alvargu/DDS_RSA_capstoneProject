@@ -35,8 +35,8 @@ end exponentiation;
 architecture Behavioral of exponentiation is
 
     ---------------------------------------------------------------------------------------------------------
--- Instantiate Blakley module
----------------------------------------------------------------------------------------------------------
+    -- Instantiate Blakley module
+    ---------------------------------------------------------------------------------------------------------
     component Blakley
         port ( clk : in std_logic;
                rst_n : in std_logic;
