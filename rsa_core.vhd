@@ -72,11 +72,9 @@ begin
     begin
         if (reset_n = '0') then
             curr_state <= WAIT_FOR_VALID;
-        else 
-            if (clk'event and clk = '1') then
+        elsif (clk'event and clk = '1') then
                 curr_state <= next_state;
             end if;
-        end if;
     end process;
 
 
@@ -87,14 +85,12 @@ begin
             --validin <= '0';
             --readyout <= '0';
             expo_EN <= '0';
-        else
-            if (clk'event and clk = '1') then
+        elsif (clk'event and clk = '1') then
                 mreg <= mreg_nxt;
                 --validin <= validin_nxt;
                 --readyout <= readyout_nxt;    
                 expo_EN <= expo_EN_nxt;
             end if;
-        end if;
     end process;
 
 
