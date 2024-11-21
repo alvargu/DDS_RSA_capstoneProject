@@ -7,7 +7,8 @@ entity rsa_output_handler is
         C_BLOCK_SIZE            :   integer := 256;
         C_STATUS_SIZE           :   integer := 32;
         C_CORE_ID_SIZE          :   integer := 4;
-        C_CORE_CNT              :   integer := 15
+        C_CORE_CNT              :   integer := 15;
+        C_CORE_REG_SIZE         :   integer := 60
     );
 
     port(
@@ -163,17 +164,20 @@ begin
     
     State_Code: process(c_state) --add inputs to the sensitivity list later on
     begin
+        h_input_ready <= '0';
         case c_state is
             -- Do nothing
             when IDLE       => null;    
             
             -- Logic for data writing
             -- Check if the register is free
-            when DATA_WRITE =>  if(to_integer(unsigned(ir_recieve_register(59 downto 56))) = 0) then
-                                    
+            when DATA_WRITE =>  if(to_integer(unsigned(ir_recieve_register(C_CORE_REG_SIZE-1 downto C_CORE_REG_SIZE-5))) = 0) then
+                                    ir_recieve_register(C_CORE_REG_SIZE-1 downto 4) <= ir_recieve_register(C_CORE_REG_SIZE-5 downto 0);
+                                    ir_recieve_register(3 downto 0) <= h_core_addr;
+                                    h_input_ready <= '1';
                                 -- If the register is not free return to idle
-                                else
-            
+                                else null;
+                                    
                                 end if;
                                 
             
