@@ -65,27 +65,9 @@ entity rsa_input_handler is
      );
 end entity;
 
+-- Functional code (not tested) (without com to out handler)
+-- ######################################
 architecture rtl of rsa_input_handler is
-	-- Can be removed when done
-	-- ###########################################
-     ---------------------------------------------------------------------
-     -- Output handler signals
-     ---------------------------------------------------------------------
-     -- signal core_id: std_logic_vector(C_msg_id_size-1 downto 0); --output
-     
-
-     ---------------------------------------------------------------------
-     -- Core handling signals
-     ---------------------------------------------------------------------
-     -- signal msgin_ready_sel: std_logic_vector(C_CORE_CNT-1 downto 0); -- input
-     -- signal msgin_cs: std_logic_vector(C_CORE_CNT-1 downto 0); -- output
-
-     -- h_core_id : out std_logic_vector(C_msg_id_size-1 downto 0)
-
-
-	-- #########################################################
-
-     -- actual signal of architecture
     -------------------------------------------------------------------------------
     -- Internal signal declaration
     -------------------------------------------------------------------------------
@@ -119,54 +101,10 @@ il_msgout_data <= msgin_data_register;
 -- Throughput signals to output handler
 ---------------------------------------------------------------------
 h_msgin_last <= msgin_last;
-/*
+
 ---------------------------------------------------------------------
--- Process sets up flag to make sure 
--- output handler recieves core id of core chosen
+-- Proces for handling actions in each state
 ---------------------------------------------------------------------
-p_output_com : process (save_core_id_recieved, clk, reset_n, core_id_recieved)
---	variable last_core_id_recieved : std_logic := '0';
-begin
---	if (rising_edge(clk)) then
---		if ((core_id_recieved = '1') and (last_core_id_recieved = '0')) then
---			save_core_id_recieved <= '1';
---			last_core_id_recieved := '1';
---		else if ((core_id_recieved = '1') and (last_core_id_recieved = '1')) then
---			save_core_id_recieved 
---		else
---		end if;
---		
---	end if;
-end process;
-
-
--- should not be nessecary with internal signal for core id:
-h_core_id <= internal_core_id;
-p_ID_output_handler : process (internal_core_id, curr_core_bm, il_msgin_ready, clk) 
-	--variable tmp_core_id : std_logic_vector(C_CORE_CNT-1 downto 0);
-	--variable tmp_curr_core_rdy : std_logic '0';
-begin
-	-- Need to find way to check if current core can recieve
-	-- this means generating curr_core_bm wich also will be used to set il_msgin_valid
-	if (il_msgin_ready(to_integer(internal_core_id)) = '1') then
-		internal_core_id <= internal_core_id;
-		curr_core_ready <= '1';
-	else
-		internal_core_id <= std_logic_vector(to_unsigned(internal_core_id) + 1);
-		curr_core_ready <= '0';
-	end if;
-	-- update signals on clk rising edge
-	--if (clk'event and (clk = '1')) then
-	--	internal_core_id <= tmp_core_id;
-	--	curr_core_ready <= tmp_curr_core_rdy;
-	--end if;
-end process;
-
--- 
---
---
-*/
---
 p_core_handler : process (curr_state)
 begin
 	case (curr_state) is
@@ -201,8 +139,7 @@ begin
      end case;
 end process;
 
--- Functional code (not tested)
--- ######################################
+
 ---------------------------------------------------------------------
 -- State machine for core handling states
 ---------------------------------------------------------------------
