@@ -32,55 +32,232 @@ entity rsa_input_handler is
           -----------------------------------------------------------------------------
 		-- Output handler communication
 		-----------------------------------------------------------------------------
-          h_core_id : out std_logic_vector(C_msg_id_size-1 downto 0);
+          h_core_id 		    : out std_logic_vector(C_msg_id_size-1 downto 0);
           -- Indicates boundary of last packet
-		il_msgout_last             : out std_logic;
+		h_msgin_last          : out std_logic;
+		-- input
+		core_id_recieved	    : in std_logic;
+		-- Signal indicating to output handler a core has been started
+     	core_id_sent		    : out std_logic;
 
 		-----------------------------------------------------------------------------
 		-- Core interface
 		-----------------------------------------------------------------------------
-		-- Message that will be sent out is valid
-		il_msgin_valid             : out std_logic_vector(C_CORE_CNT-1 downto 0);
+		-- Message that will be sent out is valid 
+		il_msgin_valid           : out std_logic_vector(C_CORE_CNT-1 downto 0); -- valid_in
 		-- Slave ready to accept a new message
-		il_msgin_ready             :  in std_logic_vector(C_CORE_CNT-1 downto 0);
+		il_msgin_ready           :  in std_logic_vector(C_CORE_CNT-1 downto 0); -- ready_in
 		-- Message that will be sent out of the rsa_msgin module
-		il_msgout_data             : out std_logic_vector(C_BLOCK_SIZE-1 downto 0);
-		
+		il_msgout_data           : out std_logic_vector(C_BLOCK_SIZE-1 downto 0); -- message
+		-- key_e_d
+		key 					: out STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
+		-- key_n
+		modulus 				: out STD_LOGIC_VECTOR(C_block_size-1 downto 0);
 
 		-----------------------------------------------------------------------------
 		-- Interface to the register block
 		-----------------------------------------------------------------------------
-		key_e_d                  :  in std_logic_vector(C_BLOCK_SIZE-1 downto 0);
-		key_n                    :  in std_logic_vector(C_BLOCK_SIZE-1 downto 0);
-          -- Description...
-		input_handler_rsa_status : out std_logic_vector((C_status_size/2)-1 downto 0)
+		key_e_d                  :  in std_logic_vector(C_BLOCK_SIZE-1 downto 0); -- key
+		key_n                    :  in std_logic_vector(C_BLOCK_SIZE-1 downto 0) -- modulus
+          -- 
+		-- Description...
+		--input_handler_rsa_status : out std_logic_vector((C_status_size/2)-1 downto 0)
      );
 end entity;
 
 architecture rtl of rsa_input_handler is
+	-- Can be removed when done
+	-- ###########################################
      ---------------------------------------------------------------------
      -- Output handler signals
      ---------------------------------------------------------------------
-     signal core_id: std_logic_vector(C_msg_id_size-1 downto 0); --output
-     signal core_id_recieved: std_logic; -- input
-     signal core_id_sent: std_logic; -- output
+     -- signal core_id: std_logic_vector(C_msg_id_size-1 downto 0); --output
+     
 
      ---------------------------------------------------------------------
      -- Core handling signals
      ---------------------------------------------------------------------
-     signal msgin_ready_sel: std_logic_vector(C_CORE_CNT-1 downto 0); -- input
-     signal msgin_cs: std_logic_vector(C_CORE_CNT-1 downto 0); -- output
+     -- signal msgin_ready_sel: std_logic_vector(C_CORE_CNT-1 downto 0); -- input
+     -- signal msgin_cs: std_logic_vector(C_CORE_CNT-1 downto 0); -- output
 
      -- h_core_id : out std_logic_vector(C_msg_id_size-1 downto 0)
+
+
+	-- #########################################################
+
      -- actual signal of architecture
-     signal h_core_id_temp: std_logic_vector(C_id_size-1 downto 0);
+    -------------------------------------------------------------------------------
+    -- Internal signal declaration
+    -------------------------------------------------------------------------------
+    -- should not be nessecary with internal signal for core id: 
+    signal internal_core_id : std_logic_vector(C_msg_id_size-1 downto 0) := (others => '0');
+	-- Used for several diff things. 
+	signal curr_core_bm : std_logic_vector(C_CORE_CNT-1 downto 0) := '1' & (others => '0');
+	signal curr_core_ready : std_logic := '0';
 
+	signal save_core_id_recieved : std_logic := '0';
+
+	signal msgin_data_register : std_logic_vector := (others => '0');
+
+	-- Initialization of state machine for input handler
+	type state is (IDLE, CORE_FOUND, LOAD_CORE, OUT_H_COM);
+	signal curr_state, next_state : state;
+
+---------------------------------------------------------------------
+-- Begin architecture
+---------------------------------------------------------------------
 begin
 
+---------------------------------------------------------------------
+-- Throughput signals to cores
+---------------------------------------------------------------------
+key <= key_e_d;
+modulus <= key_n;
+il_msgout_data <= msgin_data_register;
 
-p_ID_output_handler : process (all) 
+---------------------------------------------------------------------
+-- Throughput signals to output handler
+---------------------------------------------------------------------
+h_msgin_last <= msgin_last;
+/*
+---------------------------------------------------------------------
+-- Process sets up flag to make sure 
+-- output handler recieves core id of core chosen
+---------------------------------------------------------------------
+p_output_com : process (save_core_id_recieved, clk, reset_n, core_id_recieved)
+--	variable last_core_id_recieved : std_logic := '0';
 begin
-     h_core_id <= std_logic_vector(h_core_id_temp);
+--	if (rising_edge(clk)) then
+--		if ((core_id_recieved = '1') and (last_core_id_recieved = '0')) then
+--			save_core_id_recieved <= '1';
+--			last_core_id_recieved := '1';
+--		else if ((core_id_recieved = '1') and (last_core_id_recieved = '1')) then
+--			save_core_id_recieved 
+--		else
+--		end if;
+--		
+--	end if;
+end process;
+
+
+-- should not be nessecary with internal signal for core id:
+h_core_id <= internal_core_id;
+p_ID_output_handler : process (internal_core_id, curr_core_bm, il_msgin_ready, clk) 
+	--variable tmp_core_id : std_logic_vector(C_CORE_CNT-1 downto 0);
+	--variable tmp_curr_core_rdy : std_logic '0';
+begin
+	-- Need to find way to check if current core can recieve
+	-- this means generating curr_core_bm wich also will be used to set il_msgin_valid
+	if (il_msgin_ready(to_integer(internal_core_id)) = '1') then
+		internal_core_id <= internal_core_id;
+		curr_core_ready <= '1';
+	else
+		internal_core_id <= std_logic_vector(to_unsigned(internal_core_id) + 1);
+		curr_core_ready <= '0';
+	end if;
+	-- update signals on clk rising edge
+	--if (clk'event and (clk = '1')) then
+	--	internal_core_id <= tmp_core_id;
+	--	curr_core_ready <= tmp_curr_core_rdy;
+	--end if;
+end process;
+
+-- 
+--
+--
+*/
+--
+p_core_handler : process (curr_state)
+begin
+	case (curr_state) is
+		when IDLE =>
+               --
+			if (il_msgin_ready(to_integer(internal_core_id)) = '1') then
+				internal_core_id <= internal_core_id;
+				curr_core_ready <= '1';
+			else
+				internal_core_id <= std_logic_vector(to_unsigned(internal_core_id) + 1);
+				curr_core_ready <= '0';
+			end if;
+			msgin_ready <= '0';
+			il_msgin_valid <= (others => '0');
+		when CORE_FOUND =>
+			-- no action needed just waiting for msgin valid from outside
+			msgin_ready <= '1';
+			il_msgin_valid <= (others => '0');
+          when LOAD_CORE => 
+               -- 
+			msgin_ready <= '1';
+			-- The line under this set msgin_valid for current core selected
+			il_msgin_valid(to_integer(internal_core_id)) <= '1';
+
+		when OUT_H_COM =>
+			-- no longer loading into core when sending
+			msgin_ready <= '0';
+			il_msgin_valid <= (others => '0');
+          when others => 
+			msgin_ready <= '0';
+               il_msgin_valid <= (others => '0');
+     end case;
+end process;
+
+-- Functional code (not tested)
+-- ######################################
+---------------------------------------------------------------------
+-- State machine for core handling states
+---------------------------------------------------------------------
+sm_core_handler : process (all)
+begin
+	case (curr_state) is
+		when IDLE =>
+               if ((curr_core_ready = '1')) then
+			    	next_state <= CORE_FOUND;
+               else
+               	next_state <= IDLE;
+               end if;
+          when CORE_FOUND => 
+               if ((msgin_valid = '1')) then
+                   	next_state <= LOAD_CORE;
+				msgin_data_register <= msgin_data;
+               else
+                   next_state <= CORE_FOUND;
+               end if;
+		when LOAD_CORE => 
+			if (il_msgin_ready(to_integer(h_core_id)) = '0') then
+                   next_state <= OUT_H_COM;
+               else
+                   next_state <= LOAD_CORE;
+               end if;
+		when OUT_H_COM => 
+			if (core_id_recieved = '1') then
+                   next_state <= IDLE;
+               else
+                   next_state <= OUT_H_COM;
+               end if;
+          when others =>
+               next_state <= IDLE;
+     end case;
+end process;
+
+
+-------------------------------------------------------------------------------
+-- Update state on rising edge
+-------------------------------------------------------------------------------
+process(clk, reset_n)
+begin
+    	if (reset_n = '0') then
+        	curr_state <= IDLE;
+    	else 
+        	if (clk'event and clk = '1') then
+            	curr_state <= next_state;
+        	end if;
+    	end if;
+end process;
+-- ###################################
+
+p_core_ID_to_bm : process (h_core_id)
+begin
+
 end process;
 
 end architecture;
