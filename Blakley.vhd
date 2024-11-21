@@ -36,7 +36,7 @@ signal counter, counter_nxt : std_logic_vector(7 downto 0) := (others => '0');
 signal Rbign : std_logic := '0';
 
 -- State initialization
-type state is (LOAD, FIRSTCALC, COMPARE_N, BITDONE);
+type state is (LOAD, FIRSTCALC, CHECKBITz, COMPARE_N, BITDONE);
 signal curr_state, next_state : state;
 
 -------------------------------------------------------------------------------
@@ -80,22 +80,21 @@ end process;
 ---------------------------------------------------------------------------------------------------------
 -- Process for statemachine logic
 ---------------------------------------------------------------------------------------------------------
-process(curr_state, start, counter, R_reg_nxt, Rbign)
+process(all)
 begin
+    next_state <= curr_state;
+    done <= '0';
     case (curr_state) is
         when LOAD => 
-            done <= '0';
             if (start = '1') then
                 next_state <= FIRSTCALC;
             else
                 next_state <= LOAD;
             end if;
         when FIRSTCALC =>
-            if (Rbign = '1') then
-                next_state <= COMPARE_N;
-            else
-                next_state <= BITDONE;
-            end if;
+            next_state <= CHECKBITz;
+        when CHECKBITz =>
+            next_state <= COMPARE_N;
         when COMPARE_N => 
             if (Rbign = '1') then
                 next_state <= COMPARE_N;
@@ -110,7 +109,6 @@ begin
                 next_state <= FIRSTCALC;
             end if;
         when others =>
-            done <= '0';
             next_state <= LOAD;
     end case;
 end process;
@@ -119,38 +117,36 @@ end process;
 ---------------------------------------------------------------------------------------------------------
 -- Process handeling computation for given state
 ---------------------------------------------------------------------------------------------------------
-process(curr_state, counter, R_reg, checkbit, counter, n, b, a, b_reg, a_shiftreg)
-variable R_temp : std_logic_vector(C_block_size downto 0) := (others => '0');
-variable checkbit_var : std_logic := '0';
+process(all)
+variable Rbign_temp : std_logic := '0';
 begin
-    a_shiftreg_nxt <= a_shiftreg;
-    b_reg_nxt <= b_reg;
+    R_reg_nxt <= R_reg;
     counter_nxt <= counter;
+    checkbit_nxt <= checkbit;
+    b_reg_nxt <= b_reg;
+    a_shiftreg_nxt <= a_shiftreg;
     case(curr_state) is
         when LOAD => 
             a_shiftreg_nxt <= a;
             b_reg_nxt <= b;
             counter_nxt <= (others => '0');
-            R_temp := (others => '0');
-            checkbit_var := '0';
+            R_reg_nxt <= (others => '0');
+            checkbit_nxt <= '0';
+            Rbign_temp := '0';
         when FIRSTCALC =>
-            R_temp := R_reg(C_block_size-1 downto 0) & '0';
+            R_reg_nxt <= R_reg(C_block_size-1 downto 0) & '0';
             a_shiftreg_nxt <= a_shiftreg(C_block_size-2 downto 0) & '0';
-            checkbit_var := a_shiftreg(C_block_size-1);
-            if (checkbit_var = '1') then
-                R_temp := std_logic_vector(unsigned(R_temp) + unsigned(b_reg));
-            end if;
-            if (unsigned(R_temp) >= unsigned(n)) then
-                Rbign <= '1';
-            else
-                Rbign <= '0';
+            checkbit_nxt <= a_shiftreg(C_block_size-1);
+        when CHECKBITz =>
+            if (checkbit = '1') then 
+                R_reg_nxt <= std_logic_vector(unsigned(R_reg) + unsigned(b_reg));
             end if;
         when COMPARE_N => 
-            R_temp := std_logic_vector(unsigned(R_reg) - unsigned(n));
-            if (unsigned(R_temp) >= unsigned(n)) then
-                Rbign <= '1';
+            if (unsigned(R_reg) >= unsigned(n)) then
+                Rbign_temp := '1';
+                R_reg_nxt <= std_logic_vector(unsigned(R_reg) - unsigned(n));
             else
-                Rbign <= '0';
+                Rbign_temp := '0';
             end if;
         when BITDONE => 
             counter_nxt <= counter + 1;
@@ -158,12 +154,11 @@ begin
             a_shiftreg_nxt <= a;
             b_reg_nxt <= b;
             counter_nxt <= (others => '0');
-            R_temp := (others => '0');
-            checkbit_var := '0';
+            R_reg_nxt <= (others => '0');
+            checkbit_nxt <= '0';
+            Rbign_temp := '0';
     end case;
-
-    R_reg_nxt <= R_temp;
-    checkbit_nxt <= checkbit_var;
+    Rbign <= Rbign_temp;
 end process;
 
 
