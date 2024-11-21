@@ -9,10 +9,10 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 --#############################################################################
 entity rsa_input_handler is
      generic(
-          C_block_size : integer := 256;
+          C_BLOCK_SIZE : integer := 256;
 		-- Not using status register ATM
-          --C_status_size : integer := 32;
-          C_msg_id_size : integer := 4;
+          --C_STATUS_SIZE : integer := 32;
+          C_CORE_ID_SIZE : integer := 4;
           C_CORE_CNT : integer := 15
      );
      port(
@@ -39,7 +39,7 @@ entity rsa_input_handler is
 		-- Output handler communication
 		-----------------------------------------------------------------------------
 		-- ID number of core used for rsa arithmetic operations sent to outputhandler
-          h_core_id 		    : out std_logic_vector(C_msg_id_size-1 downto 0);
+          h_core_id 		    : out std_logic_vector(C_CORE_ID_SIZE-1 downto 0);
 		-- Flag signal from outputhandler to indicate that core id was recieved and stored
 		h_core_id_recieved	    : in std_logic;
 		-- Signal indicating to output handler a core has been started
@@ -82,10 +82,11 @@ architecture rtl of rsa_input_handler is
     	--########################################################################
 	-- Signals for internal core logic:
     	-- internal_core_id should not be nessecary with internal signal for core id but is used for saftey: 
-    	signal internal_core_id : std_logic_vector(C_msg_id_size-1 downto 0) := (others => '0');
+    	signal internal_core_id : std_logic_vector(C_CORE_ID_SIZE-1 downto 0) := (others => '0');
 	-- Signal flag that indicates that the current core indicated by internal_core_id is ready to recieve
 	signal curr_core_ready : std_logic := '0';
-
+	-- constant to reset internal_core_id
+	constant id_first_core : std_logic_vector(C_CORE_ID_SIZE-1 downto 0) := (0 => '1', others => '0');
 	-- signal save_h_core_id_recieved : std_logic := '0';
 	-- Register used to save value of msgin_data to load into cores
 	signal msgin_data_register : std_logic_vector(C_BLOCK_SIZE-1 downto 0) := (others => '0');
@@ -114,11 +115,16 @@ il_msgout_data <= msgin_data_register;
 --h_msgin_last <= msgin_last;
 -- Core ID 
 h_core_id <= internal_core_id;
+p_core_id_outside_def : process (internal_core_id)
+begin
+
+end process;
 
 --#############################################################################
 -- Proces for handling actions in each state
 --#############################################################################
 p_core_handler : process (curr_state, il_msgin_ready, internal_core_id)
+	--variable tmp_internal_core_id : std_logic_vector(C_CORE_ID_SIZE-1 downto 0) := (others)
 begin
 	-- Sett default values for h_core_id_sent, msgin_ready and il_msgin_valid
 	h_core_id_sent <= '0';
@@ -129,7 +135,11 @@ begin
 		--###################################################################
 		when IDLE =>
                --
-			if (il_msgin_ready(to_integer(unsigned(internal_core_id))) = '1') then
+			if (to_integer(unsigned(internal_core_id)) >= (C_CORE_CNT - 1)) then
+				--tmp_internal_core_id := (others => '0');
+				--tmp_internal_core_id(0) := '1';
+				internal_core_id <= (0 => '1', others => '0');
+			elsif (il_msgin_ready(to_integer(unsigned(internal_core_id))) = '1') then
 				internal_core_id <= internal_core_id;
 				curr_core_ready <= '1';
 			else
