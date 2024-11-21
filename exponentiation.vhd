@@ -8,17 +8,11 @@ entity exponentiation is
 		C_block_size : integer := 256
 	);
 	port (
-		--input control
-		valid_in	: in STD_LOGIC;
-		ready_in	: out STD_LOGIC;
-
+		start : in std_logic;
+        done : out std_logic;
 		--input data
 		message 	: in STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
 		key 		: in STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
-
-		--output control
-		ready_out	: in STD_LOGIC;
-		valid_out	: out STD_LOGIC;
 
 		--output data
 		result 		: out STD_LOGIC_VECTOR(C_block_size-1 downto 0);
@@ -35,8 +29,8 @@ end exponentiation;
 architecture Behavioral of exponentiation is
 
     ---------------------------------------------------------------------------------------------------------
-    -- Instantiate Blakley module
-    ---------------------------------------------------------------------------------------------------------
+-- Instantiate Blakley module
+---------------------------------------------------------------------------------------------------------
     component Blakley
         port ( clk : in std_logic;
                rst_n : in std_logic;
@@ -63,7 +57,6 @@ architecture Behavioral of exponentiation is
     signal cblakleydone : std_logic := '0';
     signal mblakleydone : std_logic := '0';
     signal counter, counter_nxt : std_logic_vector(7 downto 0);
-
     -- State initialization 
     type state is (IDLE, LOAD, FIRSTBIT, CBLAKLEY, SHIFTBIT, MBLAKLEY, BITDONE, READY_TO_SEND);
     signal curr_state, next_state : state;
@@ -110,19 +103,17 @@ begin
     ---------------------------------------------------------------------------------------------------------
     -- Process for statemachine logic
     ---------------------------------------------------------------------------
-    process(curr_state, valid_in, cblakleydone, mblakleydone, counter, ready_out)
+    process(all)
     begin
         case(curr_state) is 
             when IDLE =>
-                ready_in <= '1';
-                valid_out <= '0';
-                if (valid_in = '1') then
+                done <= '0';
+                if (start = '1') then
                     next_state <= LOAD;
                 else
                     next_state <= IDLE;
                 end if;
             when LOAD =>
-                ready_in <= '0';
                 next_state <= FIRSTBIT;
             when FIRSTBIT => 
                 next_state <= CBLAKLEY;
@@ -146,19 +137,13 @@ begin
                 end if;
             when BITDONE => 
                 if (counter >= C_block_size-1) then
-                    next_state <= READY_TO_SEND;
+                    done <= '1';
+                    result <= creg;
+                    next_state <= IDLE;
                 else
                     next_state <= CBLAKLEY;
                 end if;
-            when READY_TO_SEND =>
-                valid_out <= '1';
-                if (ready_out = '1') then
-                    next_state <= IDLE;
-                else
-                    next_state <= READY_TO_SEND;
-                end if;
             when others => 
-                valid_out <= '0';
                 next_state <= IDLE;
         end case;
     end process;
@@ -189,18 +174,17 @@ begin
 
 
     ---------------------------------------------------------------------------------------------------------
-    -- Process handling computation for given state
+    -- Process handeling computation for given state
     ---------------------------------------------------------------------------------------------------------
-    process(curr_state, message, key, modulus, ereg, mreg, cblakleydone, mblakleydone, ready_out)
+    process(all)
     variable checkbit_var : std_logic := '0';
-    variable c_temp : std_logic_vector(C_block_size-1 downto 0);
     begin
         case(curr_state) is 
             when IDLE =>
                 mreg_nxt <= (others => '0');
                 ereg_nxt <= (others => '0');
                 nreg_nxt <= (others => '0');
-                c_temp := (others => '0');
+                creg_nxt <= (others => '0');
                 checkbit_var := '0';
                 C_BLAKLEY_EN_nxt <= '0';
                 M_BLAKLEY_EN_nxt <= '0';
@@ -213,46 +197,39 @@ begin
                 ereg_nxt <= ereg(C_block_size-2 downto 0) & '0';
                 checkbit_var := ereg(C_block_size-1);
                 if (checkbit_var = '1') then
-                    c_temp := mreg;
+                    creg_nxt <= mreg;
                 else
-                    c_temp(C_block_size-1 downto 1) := (others => '0');
-                    c_temp(0) := '1';
+                    creg_nxt(C_block_size-1 downto 1) <= (others => '0');
+                    creg_nxt(0) <= '1';
                 end if;
             when CBLAKLEY =>
+                C_BLAKLEY_EN_nxt <= '1';
                 if (cblakleydone = '1') then 
-                    c_temp := cblakleyout;
+                    creg_nxt <= cblakleyout;
                     C_BLAKLEY_EN_nxt <= '0';
-                else
-                    C_BLAKLEY_EN_nxt <= '1';
                 end if;
             when SHIFTBIT => 
                 ereg_nxt <= ereg(C_block_size-2 downto 0) & '0';
                 checkbit_var := ereg(C_block_size-1);
             when MBLAKLEY => 
+                M_BLAKLEY_EN_nxt <= '1';
                 if (mblakleydone = '1') then
-                    c_temp := mblakleyout;
+                    creg_nxt <= mblakleyout;
                     M_BLAKLEY_EN_nxt <= '0';
-                else
-                    M_BLAKLEY_EN_nxt <= '1';
                 end if;
             when BITDONE => 
                 counter_nxt <= counter + 1;
-            WHEN READY_TO_SEND =>
-                if (ready_out = '1') then
-                    result <= creg;
-                end if;
             when others =>
                 mreg_nxt <= (others => '0');
                 ereg_nxt <= (others => '0');
                 nreg_nxt <= (others => '0');
-                c_temp := (others => '0');
+                creg_nxt <= (others => '0');
                 checkbit_var := '0';
                 C_BLAKLEY_EN_nxt <= '0';
                 M_BLAKLEY_EN_nxt <= '0';
                 counter_nxt <= (others => '0');
         end case;
-        creg_nxt <= c_temp;
         checkbit_nxt <= checkbit_var;
     end process;
- 
+    
 end Behavioral;
