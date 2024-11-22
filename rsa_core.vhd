@@ -8,7 +8,7 @@ entity rsa_core is
         -- Sizes of: Data packet, status register and count of cores
         C_BLOCK_SIZE            : integer := 256;
         C_STATUS_SIZE           : integer := 32;
-        C_CORE_CNT              : integer := 16
+        C_CORE_CNT              : integer := 12
      );
      port(
 		-----------------------------------------------------------------------------
