@@ -3,257 +3,257 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
-entity exponentiation is
-	generic (
-		C_block_size        : integer := 256
-	);
-	port (
-	   -- Input Handler Data
-	   
-		start               : in std_logic;
-		message 	        : in STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
-		key 		        : in STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
-		modulus 	        : in STD_LOGIC_VECTOR(C_block_size-1 downto 0);
+entity rsa_core is
+     generic(
+        -- Sizes of: Data packet, status register and count of cores
+        C_BLOCK_SIZE            : integer := 256;
+        C_STATUS_SIZE           : integer := 32;
+        C_CORE_CNT              : integer := 16
+     );
+     port(
+		-----------------------------------------------------------------------------
+		-- Slave msgin interface
+		-----------------------------------------------------------------------------
+		-- msgin_valid          - Message that will be sent out is valid
+		-- msgin_ready          - Slave ready to accept a new message
+		-- msgin_data           - Message that will be sent out of the rsa_msgin module
+		-- msgin_last           - Indicates boundary of last packet
 		
-	   -- Output handler data
+		msgin_valid             :   in  std_logic;
+		msgin_ready             :   out std_logic;
+		msgin_data              :   in  std_logic_vector(C_BLOCK_SIZE-1 downto 0);
+		msgin_last              :   in  std_logic;
 
-        c_core_reset        : in    std_logic;
-        c_core_is_busy      : out   std_logic;
-        c_core_done         : out   std_logic;
-        c_core_extract      : in    std_logic;
+		-----------------------------------------------------------------------------
+		-- Master msgout interface
+		-----------------------------------------------------------------------------
+		-- msgout_valid         - Message that will be sent out is valid
+		-- msgout_ready         - Slave ready to accept a new message
+		-- msgout_data          - Message that will be sent out of the rsa_msgin module
+		-- msgout_last          - Indicates boundary of last packet
+		
+		msgout_valid            :   out std_logic;
+		msgout_ready            :   in  std_logic;
+		msgout_data             :   out std_logic_vector(C_BLOCK_SIZE-1 downto 0);
+		msgout_last             :   out std_logic;
+
+		-----------------------------------------------------------------------------
+		-- Interface to the register block
+		-----------------------------------------------------------------------------
+		-- key_e_d              - Decription/encription Key for the RSA
+		-- key_n                - Modulus Key for the RSA
+		-- rsa_status           - Status register of the RSA core
+		
+		key_e_d                 :   in  std_logic_vector(C_BLOCK_SIZE-1 downto 0);
+		key_n                   :   in  std_logic_vector(C_BLOCK_SIZE-1 downto 0);
+		rsa_status              :   out std_logic_vector(31 downto 0);
+     
+        -----------------------------------------------------------------------------
+		-- Misc.
+		-----------------------------------------------------------------------------
+		-- clk                  - Clock signal of the system
+		-- reset_n              - Reset of the system, active low
+		
+		clk                     :   in  std_logic;
+		reset_n                 :   in  std_logic
+     );
+end entity;
+
+architecture rtl of rsa_core is
+
+    component exponentiation
+        port (
+            start               :   in  std_logic;
+            done                :   out std_logic;
 	
-	    result 		        : out STD_LOGIC_VECTOR(C_block_size-1 downto 0);
-	    
-		--utility
-		clk 		        : in STD_LOGIC;
-		reset_n 	        : in STD_LOGIC
-	);
-end exponentiation;
-
-architecture Behavioral of exponentiation is
-
-    ---------------------------------------------------------------------------------------------------------
--- Instantiate Blakley module
----------------------------------------------------------------------------------------------------------
-    component Blakley
-        port ( clk          : in std_logic;
-               rst_n        : in std_logic;
-               start        : in std_logic;
-               a            : in std_logic_vector(C_block_size-1 downto 0);
-               b            : in std_logic_vector(C_block_size-1 downto 0);
-               n            : in std_logic_vector(C_block_size-1 downto 0);
-               R            : out std_logic_vector(C_block_size-1 downto 0);
-               done         : out std_logic);
+			--input data
+			message 	        :   in  STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
+			key 		        :   in  STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
+	
+			--output data
+			result 		        :   out STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
+	
+			--modulus
+			modulus 	        :   in  STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
+	
+			--utility
+			clk 		        :   in  STD_LOGIC;
+			reset_n 	        :   in  STD_LOGIC
+		
+        );
     end component;
 
-    -------------------------------------------------------------------------------
-    -- Internal signal declaration
-    -------------------------------------------------------------------------------
-    signal checkbit, checkbit_nxt           : std_logic := '0';
-    signal C_BLAKLEY_EN, C_BLAKLEY_EN_nxt   : std_logic := '0';
-    signal M_BLAKLEY_EN, M_BLAKLEY_EN_nxt   : std_logic := '0';
-    signal nreg, nreg_nxt                   : std_logic_vector(C_block_size-1 downto 0);
-    signal mreg, mreg_nxt                   : std_logic_vector(C_block_size-1 downto 0);
-    signal ereg, ereg_nxt                   : std_logic_vector(C_block_size-1 downto 0);
-    signal creg, creg_nxt                   : std_logic_vector(C_block_size-1 downto 0);
-    signal cblakleyout                      : std_logic_vector(C_block_size-1 downto 0);
-    signal mblakleyout                      : std_logic_vector(C_block_size-1 downto 0);
-    signal cblakleydone                     : std_logic := '0';
-    signal mblakleydone                     : std_logic := '0';
-    signal counter, counter_nxt             : std_logic_vector(7 downto 0);
-    -- State initialization 
-    type state is (IDLE, LOAD, FIRSTBIT, CBLAKLEY, SHIFTBIT, MBLAKLEY, BITDONE, READY_TO_SEND, READ_LOCK);
-    signal curr_state, next_state : state;
-
+    -- il - Internal line
+    -- Used to transfer and connect register with the cores
+    signal il_core_busy         : std_logic_vector(C_CORE_CNT-1     downto 0);
+    signal il_core_done         : std_logic_vector(C_CORE_CNT-1     downto 0);
+    signal il_core_start        : std_logic_vector(C_CORE_CNT-1     downto 0);
+    signal il_core_last_msg     : std_logic_vector(C_CORE_CNT-1     downto 0);
+    signal il_core_reset        : std_logic_vector(C_CORE_CNT-1     downto 0);
+    
+    
+    -- Definitions of both (O)utput and (I)nput processing FSM
+    type O_FSM is (READ_CORE,
+                   SEND_DATA);
+    
+    type I_FSM is (IDLE, 
+                   CORE_RDY,
+                   LOAD_CORE);
+    
+    -- Signals created for the FSM
+    -- Both have a current and next state
+    signal output_c_state, 
+           nx_output_state      : O_FSM;
+           
+    signal input_c_state,
+           nx_input_state       : I_FSM;
+    
+    --Signals Created in order to select/point to different cores
+    -- Allow the sending of data to/from cores without the need for complicated implementation
+    signal output_cursor, 
+           nx_cursor            : integer range 0 to C_CORE_CNT-1;
+    
+    signal input_cursor,  
+           nx_i_cursor          : integer range 0 to C_CORE_CNT-1;
+    
+    -- Technically a large OR gate, uses one of the cursors to decide which data to get from with core
+    type core_handler is array (C_CORE_CNT-1 downto 0) of std_logic_vector(C_BLOCK_SIZE-1 downto 0);
+    signal core_out : core_handler;
 begin
-    
-    -------------------------------------------------------------------------------
-    -- Port mapping to Blakley modules
-    -------------------------------------------------------------------------------
-    C_BLAKLEY : Blakley port map (  clk     => clk,
-                                    rst_n   => reset_n,
-                                    start   => C_BLAKLEY_EN,
-                                    a       => creg,
-                                    b       => creg,
-                                    n       => nreg,
-                                    R       => cblakleyout,
-                                    done    => cblakleydone
-                                    );
 
-    M_BLAKLEY : Blakley port map (  clk     => clk,
-                                    rst_n   => reset_n,
-                                    start   => M_BLAKLEY_EN,
-                                    a       => creg,
-                                    b       => mreg,
-                                    n       => nreg,
-                                    R       => mblakleyout,
-                                    done    => mblakleydone
-                                    );
+    CORE_GENERATE: for core_nr in 0 to C_CORE_CNT-1 generate
+        EXPONENTIATION: entity work.exponentiation
+            generic map (
+                C_BLOCK_SIZE            => C_BLOCK_SIZE
+            )
+            port map (
+                --
+                message                 => msgin_data,
+                key                     => key_e_d,
+                modulus                 => key_n,
+                
+                --
+                c_core_start            => il_core_start(core_nr),
+                c_core_reset            => il_core_reset(core_nr),
+                c_core_done             => il_core_done(core_nr),
+                c_core_is_busy          => il_core_busy(core_nr),
+                
+                --
+                result                  => core_out(core_nr),
+                
+                -- Misc.
+                clk                     => clk,
+                reset_n                 => reset_n
+            );
+    end generate;
 
-    
-    
-    ---------------------------------------------------------------------------------------------------------
-    -- Update state on rising edge
-    ---------------------------------------------------------------------------------------------------------
-    process(clk, reset_n)
+    -----------------------------------------------------------------------------
+    -- msgout_x Control
+	-----------------------------------------------------------------------------
+
+    FSM_OUTPUT_CLK: process(clk, reset_n)
     begin
-        if (reset_n = '0') then
-            curr_state <= IDLE;
-        elsif (clk'event and clk = '1') then
-            curr_state <= next_state;
-        end if;
-    end process;
-
-
-    ---------------------------------------------------------------------------------------------------------
-    -- Process for statemachine logic
-    ---------------------------------------------------------------------------
-    process(all)
-    begin
-    c_core_done <= '0';
-    c_core_is_busy <= '1';
-    next_state <= curr_state;
-        case(curr_state) is 
-            when IDLE       =>  c_core_is_busy <= '0';
-                                c_core_done <= '0';
-                                if (start = '1') then
-                                    next_state <= LOAD;
-                                else
-                                    next_state <= IDLE;
-                                end if;
-                
-            when LOAD       =>  next_state <= FIRSTBIT;
-                
-            when FIRSTBIT   =>  next_state <= CBLAKLEY; 
-                
-            when CBLAKLEY   =>  if (cblakleydone = '1') then
-                                    next_state <= SHIFTBIT;
-                                else
-                                    next_state <= CBLAKLEY;
-                                end if; 
-                
-            when SHIFTBIT   =>  if (checkbit = '1') then
-                                    next_state <= MBLAKLEY;
-                                else
-                                    next_state <= BITDONE;
-                                end if;
-                
-                
-            when MBLAKLEY   =>  if (mblakleydone = '1') then
-                                    next_state <= BITDONE;
-                                else
-                                    next_state <= MBLAKLEY;
-                                end if; 
-                
-            when BITDONE    =>  if (counter >= C_block_size-1) then
-                                    next_state <= READ_LOCK;
-                                else
-                                    next_state <= CBLAKLEY;
-                                end if;
-            
-            when READ_LOCK  =>  c_core_done <= '1';
-                                result      <= creg;
-                                if (c_core_reset = '1') then
-                                    next_state <= IDLE;
-                                end if;
-            /*
-            when READ_LOCK  =>  result      <= creg;
-                                c_core_done <= '1';
-                                if(c_core_reset = '1') then
-                                    next_state <= IDLE;
-                                end if;
-            */                   
-                                
-                                
-            when others     => next_state <= IDLE;
-        end case;
- 
-    
-    end process;
-
-    process(clk, reset_n)
-    begin
-        if (reset_n = '0') then
-            mreg            <= (others => '0');
-            ereg            <= (others => '0');
-            nreg            <= (others => '0');
-            creg            <= (others => '0');
-            C_BLAKLEY_EN    <= '0';
-            M_BLAKLEY_EN    <= '0';
-            counter         <= (others => '0');
+        if reset_n = '0' then
+            output_c_state     <= READ_CORE;
+            output_cursor      <= 0;
         elsif rising_edge(clk) then
-                mreg <= mreg_nxt;
-                ereg <= ereg_nxt;
-                nreg <= nreg_nxt;
-                creg <= creg_nxt;
-                checkbit <= checkbit_nxt;
-                counter <= counter_nxt;
-                C_BLAKLEY_EN <= C_BLAKLEY_EN_nxt;
-                M_BLAKLEY_EN <= M_BLAKLEY_EN_nxt;
+            output_c_state     <= nx_output_state;
+            output_cursor      <= nx_cursor;
+        end if;
+    end process;
+    
+    FSM_OUTPUT_LOGIC: process(all)
+    begin
+        --Default Values for those signals
+        msgout_valid           <= '0';
+        msgout_last            <= '0';
+        msgout_data            <= (others => '0');
+        il_core_reset          <= (others => '0');
+        
+        -- If the nx was not updated with the case keep old value
+        nx_output_state        <= output_c_state;
+        nx_cursor              <= output_cursor;
+    
+        -- Logic for each of the states in the FSM
+        case output_c_state is
+            when READ_CORE     =>   if(il_core_done(output_cursor)) then
+                                        nx_output_state <= SEND_DATA;
+                                    end if;
+            
+            when SEND_DATA     =>   if(msgout_ready = '1') then
+                                        -- Get output data from the core
+                                        msgout_data     <= core_out(output_cursor);
+                                        msgout_last     <= il_core_last_msg(output_cursor);
+                                        msgout_valid    <= '1'; 
+            
+                                        -- Handle the cursor
+                                        if(output_cursor >= (C_CORE_CNT-1)) then
+                                            nx_cursor   <= 0;
+                                        else
+                                            nx_cursor   <= output_cursor + 1;
+                                        end if;
+                                
+                                        -- Reset the Core
+                                        il_core_reset(output_cursor) <= '1'; 
+                                    
+                                        -- Move to default state
+                                        nx_output_state <= READ_CORE;
+                                    end if;
+                                
+            when OTHERS        =>   nx_output_state     <= READ_CORE;
+        end case;
+    end process;
+
+    -----------------------------------------------------------------------------
+    -- msgin_x Control
+	-----------------------------------------------------------------------------
+
+    INPUT_STATE: process(clk, reset_n)
+    begin
+        if reset_n = '0' then
+            input_c_state   <= IDLE;
+            input_cursor    <= 0;
+        elsif rising_edge(clk) then
+            input_cursor    <= nx_i_cursor;
+            input_c_state   <= nx_input_state;
         end if;
     end process;
 
 
-    ---------------------------------------------------------------------------------------------------------
-    -- Process handeling computation for given state
-    ---------------------------------------------------------------------------------------------------------
-    process(all)
-        variable checkbit_var : std_logic := '0';
+    INPUT_LOGIC: process(all)
     begin
-        case(curr_state) is 
-            when IDLE =>
-                mreg_nxt <= (others => '0');
-                ereg_nxt <= (others => '0');
-                nreg_nxt <= (others => '0');
-                creg_nxt <= (others => '0');
-                checkbit_var := '0';
-                C_BLAKLEY_EN_nxt <= '0';
-                M_BLAKLEY_EN_nxt <= '0';
-                counter_nxt <= (others => '0');
-            when LOAD => 
-                mreg_nxt <= message;
-                ereg_nxt <= key;
-                nreg_nxt <= modulus;
-            when FIRSTBIT => 
-                ereg_nxt <= ereg(C_block_size-2 downto 0) & '0';
-                checkbit_var := ereg(C_block_size-1);
-                if (checkbit_var = '1') then
-                    creg_nxt <= mreg;
-                else
-                    creg_nxt(C_block_size-1 downto 1) <= (others => '0');
-                    creg_nxt(0) <= '1';
-                end if;
-            when CBLAKLEY =>
-                C_BLAKLEY_EN_nxt <= '1';
-                if (cblakleydone = '1') then 
-                    creg_nxt <= cblakleyout;
-                    C_BLAKLEY_EN_nxt <= '0';
-                end if;
-            when SHIFTBIT => 
-                ereg_nxt <= ereg(C_block_size-2 downto 0) & '0';
-                checkbit_var := ereg(C_block_size-1);
-            when MBLAKLEY => 
-                M_BLAKLEY_EN_nxt <= '1';
-                if (mblakleydone = '1') then
-                    creg_nxt <= mblakleyout;
-                    M_BLAKLEY_EN_nxt <= '0';
-                end if;
-            when BITDONE => 
-                counter_nxt <= counter + 1;
-                
-            when READ_LOCK => null;
+        nx_input_state      <= input_c_state;
+        msgin_ready         <= '0';
+        il_core_start       <= (others => '0');
+        
+        
+        case input_c_state is
+            when IDLE       =>  if (msgin_valid = '1') then
+                                    nx_input_state  <= CORE_RDY;
+                                end if;
+                                
             
-            when others =>
-                mreg_nxt <= (others => '0');
-                ereg_nxt <= (others => '0');
-                nreg_nxt <= (others => '0');
-                creg_nxt <= (others => '0');
-                checkbit_var := '0';
-                C_BLAKLEY_EN_nxt <= '0';
-                M_BLAKLEY_EN_nxt <= '0';
-                counter_nxt <= (others => '0');
+            when CORE_RDY   =>  if (il_core_busy(input_cursor) = '0') then
+                                    il_core_start(input_cursor) <= '1';
+                                end if;
+                                
+                                il_core_last_msg(input_cursor) <= msgin_last;
+                                
+                                nx_input_state      <= LOAD_CORE;
+                                
+                                --Deal with core cursor
+                                if(input_cursor >= (C_CORE_CNT-1)) then
+                                    nx_i_cursor     <= 0;
+                                else
+                                    nx_i_cursor <= input_cursor + 1;
+                                end if;
+            
+            when LOAD_CORE  =>  if(il_core_busy(input_cursor) = '0') then
+                                    msgin_ready     <= '1';
+                                    nx_input_state  <= IDLE;
+                                end if;
+                                
+            when OTHERS     =>  nx_input_state      <= IDLE;
         end case;
-        checkbit_nxt <= checkbit_var;
     end process;
-    
-end Behavioral;
+end;
