@@ -88,13 +88,13 @@ sm_core_handler : process 	(clk,
 						il_msgin_ready)
 	variable addr : integer range 0 to C_CORE_CNT-1 := 0;
 begin
-     if (clk'event and clk = '1') then
-		if (reset_n = '0') then
-     	   	fsm_state <= IDLE;
-			addr := 0;
-			msgin_ready <= '0';
-			il_msgin_valid <= (others => '0');
-    		else 
+     if (reset_n = '0') then
+        	fsm_state <= IDLE;
+		addr := 0;
+		msgin_ready <= '0';
+		il_msgin_valid <= (others => '0');
+    	else
+		if (clk'event and clk = '1') then
 			-- Set default values
 			fsm_state <= fsm_state;
 			addr := addr;
