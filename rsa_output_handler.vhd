@@ -81,6 +81,9 @@ begin
                                     -- Output data from the core
                                     h_msgout_data   <= c_core_data;
                                     
+                                    -- Check is last msg and if so output it 
+                                    h_msgout_last <= c_core_last_msg(core_cursor);
+                                    
                                     -- Mark data as valid
                                     h_msgout_valid  <= '1';
                                     
