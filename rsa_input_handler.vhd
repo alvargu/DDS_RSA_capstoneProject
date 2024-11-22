@@ -143,7 +143,6 @@ begin
 				when others =>
      		          fsm_state <= IDLE;
      		end case;
-		end if;
-	end if;
-end process;
+     	end if;
+	end process;
 end architecture;
