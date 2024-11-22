@@ -8,25 +8,23 @@ entity exponentiation is
 		C_block_size        : integer := 256
 	);
 	port (
-	   -- Input Handler Data
-	   
-		start               : in std_logic;
-		message 	        : in STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
-		key 		        : in STD_LOGIC_VECTOR ( C_block_size-1 downto 0 );
-		modulus 	        : in STD_LOGIC_VECTOR(C_block_size-1 downto 0);
+	    -- 
+		message 	        : in    STD_LOGIC_VECTOR(C_block_size-1 downto 0);
+		key 		        : in    STD_LOGIC_VECTOR(C_block_size-1 downto 0);
+		modulus 	        : in    STD_LOGIC_VECTOR(C_block_size-1 downto 0);
 		
-	   -- Output handler data
-
+	    -- 
+        c_core_start        : in    std_logic;
         c_core_reset        : in    std_logic;
         c_core_is_busy      : out   std_logic;
         c_core_done         : out   std_logic;
-        --c_core_extract      : in    std_logic;
-	
-	    result 		        : out STD_LOGIC_VECTOR(C_block_size-1 downto 0);
+	    
+	    --
+	    result 		        : out   STD_LOGIC_VECTOR(C_block_size-1 downto 0);
 	    
 		--utility
-		clk 		        : in STD_LOGIC;
-		reset_n 	        : in STD_LOGIC
+		clk 		        : in    STD_LOGIC;
+		reset_n 	        : in    STD_LOGIC
 	);
 end exponentiation;
 
@@ -116,7 +114,7 @@ begin
         case(curr_state) is 
             when IDLE       =>  c_core_is_busy <= '0';
                                 c_core_done <= '0';
-                                if (start = '1') then
+                                if (c_core_start = '1') then
                                     next_state <= LOAD;
                                 else
                                     next_state <= IDLE;
