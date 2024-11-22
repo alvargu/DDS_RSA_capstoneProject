@@ -153,15 +153,7 @@ begin
                                 result      <= creg;
                                 if (c_core_reset = '1') then
                                     next_state <= IDLE;
-                                end if;
-            /*
-            when READ_LOCK  =>  result      <= creg;
-                                c_core_done <= '1';
-                                if(c_core_reset = '1') then
-                                    next_state <= IDLE;
-                                end if;
-            */                   
-                                
+                                end if;          
                                 
             when others     => next_state <= IDLE;
         end case;
