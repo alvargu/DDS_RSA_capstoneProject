@@ -7,7 +7,7 @@ entity rsa_core is
      generic(
         -- Sizes of: Data packet, status register and count of cores
         C_BLOCK_SIZE            : integer := 256;
-        --C_STATUS_SIZE           : integer := 32;
+        C_STATUS_SIZE           : integer := 32;
         C_CORE_CNT              : integer := 16
      );
      port(
@@ -46,7 +46,7 @@ entity rsa_core is
 		
 		key_e_d                 :   in  std_logic_vector(C_BLOCK_SIZE-1 downto 0);
 		key_n                   :   in  std_logic_vector(C_BLOCK_SIZE-1 downto 0);
-		--rsa_status              :   out std_logic_vector(31 downto 0);
+		rsa_status              :   out std_logic_vector(31 downto 0);
      
         -----------------------------------------------------------------------------
 		-- Misc.
@@ -131,14 +131,12 @@ begin
                 message                 => msgin_data,
                 key                     => key_e_d,
                 modulus                 => key_n,
-                start                   => il_core_start(core_nr),
                 
                 --
-                
+                c_core_start            => il_core_start(core_nr),
                 c_core_reset            => il_core_reset(core_nr),
                 c_core_done             => il_core_done(core_nr),
                 c_core_is_busy          => il_core_busy(core_nr),
-                --c_core_extract          => il_core_extract(core_nr),
                 
                 --
                 result                  => core_out(core_nr),
@@ -210,6 +208,9 @@ begin
     -- msgin_x Control
 	-----------------------------------------------------------------------------
 
+    --TODO: Fix names on states so they make sense
+    --TODO: Comment rest of code
+
     INPUT_STATE: process(clk, reset_n)
     begin
         if reset_n = '0' then
@@ -247,7 +248,7 @@ begin
                                 if(input_cursor >= (C_CORE_CNT-1)) then
                                     nx_i_cursor     <= 0;
                                 else
-                                    nx_i_cursor <= input_cursor + 1;
+                                    nx_i_cursor     <= input_cursor + 1;
                                 end if;
             
             when LOAD_CORE  =>  if(il_core_busy(input_cursor) = '0') then
