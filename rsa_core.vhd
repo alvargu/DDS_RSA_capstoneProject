@@ -61,28 +61,6 @@ end entity;
 
 architecture rtl of rsa_core is
 
-    component exponentiation
-        port (
-            start               :   in  std_logic;
-            done                :   out std_logic;
-	
-			--input data
-			message 	        :   in  STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
-			key 		        :   in  STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
-	
-			--output data
-			result 		        :   out STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
-	
-			--modulus
-			modulus 	        :   in  STD_LOGIC_VECTOR(C_BLOCK_SIZE-1 downto 0);
-	
-			--utility
-			clk 		        :   in  STD_LOGIC;
-			reset_n 	        :   in  STD_LOGIC
-		
-        );
-    end component;
-
     -- il - Internal line
     -- Used to transfer and connect register with the cores
     signal il_core_busy         : std_logic_vector(C_CORE_CNT-1     downto 0);
