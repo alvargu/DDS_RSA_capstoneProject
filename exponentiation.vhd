@@ -20,7 +20,7 @@ entity exponentiation is
         c_core_reset        : in    std_logic;
         c_core_is_busy      : out   std_logic;
         c_core_done         : out   std_logic;
-        c_core_extract      : in    std_logic;
+        --c_core_extract      : in    std_logic;
 	
 	    result 		        : out STD_LOGIC_VECTOR(C_block_size-1 downto 0);
 	    
