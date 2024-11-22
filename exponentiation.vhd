@@ -208,6 +208,9 @@ begin
     -- msgin_x Control
 	-----------------------------------------------------------------------------
 
+    --TODO: Fix names on states so they make sense
+    --TODO: Comment rest of code
+
     INPUT_STATE: process(clk, reset_n)
     begin
         if reset_n = '0' then
