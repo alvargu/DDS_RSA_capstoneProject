@@ -74,7 +74,7 @@ architecture rtl of rsa_input_handler is
 
 	-- Initialization of state machine for input handler
 	type state is (IDLE, CORE_RDY, LOAD_CORE);
-	signal fsm_state : state;
+	signal fsm_state : state := IDLE;
 
 --#############################################################################
 -- Begin architecture
@@ -144,5 +144,7 @@ begin
      		          fsm_state <= IDLE;
      		end case;
      	end if;
-	end process;
+	end if;
+end process;
+
 end architecture;
