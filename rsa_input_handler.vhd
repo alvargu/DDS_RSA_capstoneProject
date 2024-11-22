@@ -15,7 +15,6 @@ entity rsa_input_handler is
 		-- #############################################################################
 		-- Not using status register ATM
           --C_STATUS_SIZE : integer := 32;
-          C_CORE_ID_SIZE : integer := 4;
           C_CORE_CNT : integer := 15
      );
      port(
@@ -32,6 +31,8 @@ entity rsa_input_handler is
 		msgin_valid             : in std_logic;
 		-- Slave ready to accept a new message
 		msgin_ready             : out std_logic;
+		-- 
+		msgin_last			: in std_logic;
 		-- #############################################################################
 		-- This line might be necessary (if so uncomment il_msgout_data and msgin_data_register)
 		-- Message that will be sent out of the rsa_msgin module
@@ -42,9 +43,11 @@ entity rsa_input_handler is
 		-- Core interface
 		-----------------------------------------------------------------------------
 		-- Message that will be sent out is valid 
-		il_msgin_valid           : out std_logic_vector(C_CORE_CNT-1 downto 0); -- valid_in
+		il_core_start           	: 	out std_logic_vector(C_CORE_CNT-1 downto 0); -- valid_in
 		-- Slave ready to accept a new message
-		il_msgin_ready           :  in std_logic_vector(C_CORE_CNT-1 downto 0) -- ready_in
+		il_core_busy           	:  	in std_logic_vector(C_CORE_CNT-1 downto 0); -- ready_in
+		--
+		h_core_last_msg		:	out std_logic_vector(C_CORE_CNT-1 downto 0)
 		-- Message that will be sent out of the rsa_msgin module
 		--il_msgout_data           : out std_logic_vector(C_BLOCK_SIZE-1 downto 0) -- message
 
@@ -85,26 +88,29 @@ sm_core_handler : process 	(clk,
 						reset_n,
 						fsm_state,
 						msgin_valid,
-						il_msgin_ready)
+						il_core_busy,
+						msgin_last)
 	variable addr : integer range 0 to C_CORE_CNT-1 := 0;
+	variable msgin_last_reg : std_logic := '0';
 begin
      if (reset_n = '0') then
         	fsm_state <= IDLE;
 		addr := 0;
 		msgin_ready <= '0';
-		il_msgin_valid <= (others => '0');
+		il_core_start <= (others => '0');
     	else
 		if (clk'event and clk = '1') then
 			-- Set default values
 			fsm_state <= fsm_state;
 			addr := addr;
 			msgin_ready <= '0';
-			il_msgin_valid <= (others => '0');
+			il_core_start <= (others => '0');
+			h_core_last_msg(addr) <= msgin_last_reg;
 			case (fsm_state) is
 				--###################################################################
 				when IDLE =>
 					-- Wait for current core to be done
-     		          if (il_msgin_ready(addr) = '1') then
+     		          if (il_core_busy(addr) = '0') then
 						-- 
 					    	fsm_state <= CORE_RDY;
      		          end if;
@@ -112,17 +118,16 @@ begin
 				when CORE_RDY =>
 					-- 
 					msgin_ready <= '1';
-     		          if ((msgin_valid = '1')) then
+     		          if (msgin_valid = '1') then
+						msgin_last_reg := msgin_last;
      		              	fsm_state <= LOAD_CORE;
-						il_msgin_valid(addr) <= '1';
+						il_core_start(addr) <= '1';
 						-- msgin_data_register <= msgin_data;
      		          end if;
 				--###################################################################
 				when LOAD_CORE =>
-					-- Check if address of core is equal to or larger than max possible
-					
 					-- If address within amount of cores check if current core is done loading in data
-					if (il_msgin_ready(addr) = '0') then
+					if (il_core_busy(addr) = '1') then
      		             	-- Go to IDLE state next and increase
 					    	fsm_state <= IDLE;
 						-- Check if address has reached last core and loop back to start if true
@@ -132,7 +137,7 @@ begin
 							addr := addr + 1; -- go to next core address
 					    	end if;
 					else
-						il_msgin_valid(addr) <= '1';
+						il_core_start(addr) <= '1';
      		          end if;
 				--###################################################################
 				when others =>
