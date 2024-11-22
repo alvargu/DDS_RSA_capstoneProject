@@ -63,16 +63,16 @@ end process;
 process(clk, rst_n)
 begin
     if (rst_n = '0') then
-        a_shiftreg <= (others => '0');
-        b_reg <= (others => '0');
-        R_reg <= (others => '0');
-        counter <= (others => '0');
+        a_shiftreg  <= (others => '0');
+        b_reg       <= (others => '0');
+        R_reg       <= (others => '0');
+        counter     <= (others => '0');
     elsif (clk'event and clk = '1') then
-        a_shiftreg <= a_shiftreg_nxt;
-        b_reg <= b_reg_nxt;
-        R_reg <= R_reg_nxt;
-        counter <= counter_nxt;
-        checkbit <= checkbit_nxt;  
+        a_shiftreg  <= a_shiftreg_nxt;
+        b_reg       <= b_reg_nxt;
+        R_reg       <= R_reg_nxt;
+        counter     <= counter_nxt;
+        checkbit    <= checkbit_nxt;  
     end if;
 end process;
 
@@ -82,34 +82,34 @@ end process;
 ---------------------------------------------------------------------------------------------------------
 process(all)
 begin
-    next_state <= curr_state;
-    done <= '0';
+    next_state  <= curr_state;
+    done        <= '0';
+    
     case (curr_state) is
-        when LOAD => 
-            if (start = '1') then
-                next_state <= FIRSTCALC;
-            else
-                next_state <= LOAD;
-            end if;
-        when FIRSTCALC =>
-            next_state <= CHECKBITz;
-        when CHECKBITz =>
-            next_state <= COMPARE_N;
-        when COMPARE_N => 
-            if (Rbign = '1') then
-                next_state <= COMPARE_N;
-            else
-                next_state <= BITDONE;
-            end if;
-        when BITDONE => 
-            if (counter >= C_block_size-1) then
-                next_state <= LOAD;
-                done <= '1';
-            else
-                next_state <= FIRSTCALC;
-            end if;
-        when others =>
-            next_state <= LOAD;
+        when LOAD       =>  if (start = '1') then
+                                next_state  <= FIRSTCALC;
+                            else
+                                next_state  <= LOAD;
+                            end if;
+            
+        when FIRSTCALC  =>  next_state      <= CHECKBITz;
+            
+        when CHECKBITz  =>  next_state      <= COMPARE_N;
+            
+        when COMPARE_N  =>  if (Rbign = '1') then
+                                next_state  <= COMPARE_N;
+                            else
+                                next_state  <= BITDONE;
+                            end if; 
+            
+        when BITDONE    =>  if (counter >= C_block_size-1) then
+                                next_state  <= LOAD;
+                                done        <= '1';
+                            else
+                                next_state  <= FIRSTCALC;
+                            end if;
+            
+        when others     =>  next_state      <= LOAD;
     end case;
 end process;
 
@@ -120,48 +120,49 @@ end process;
 process(all)
 variable Rbign_temp : std_logic := '0';
 begin
-    R_reg_nxt <= R_reg;
-    counter_nxt <= counter;
-    checkbit_nxt <= checkbit;
-    b_reg_nxt <= b_reg;
-    a_shiftreg_nxt <= a_shiftreg;
+    R_reg_nxt       <= R_reg;
+    counter_nxt     <= counter;
+    checkbit_nxt    <= checkbit;
+    b_reg_nxt       <= b_reg;
+    a_shiftreg_nxt  <= a_shiftreg;
+    
     case(curr_state) is
-        when LOAD => 
-            a_shiftreg_nxt <= a;
-            b_reg_nxt <= b;
-            counter_nxt <= (others => '0');
-            R_reg_nxt <= (others => '0');
-            checkbit_nxt <= '0';
-            Rbign_temp := '0';
-        when FIRSTCALC =>
-            R_reg_nxt <= R_reg(C_block_size-1 downto 0) & '0';
-            a_shiftreg_nxt <= a_shiftreg(C_block_size-2 downto 0) & '0';
-            checkbit_nxt <= a_shiftreg(C_block_size-1);
-        when CHECKBITz =>
-            if (checkbit = '1') then 
-                R_reg_nxt <= std_logic_vector(unsigned(R_reg) + unsigned(b_reg));
-            end if;
-        when COMPARE_N => 
-            if (unsigned(R_reg) >= unsigned(n)) then
-                Rbign_temp := '1';
-                R_reg_nxt <= std_logic_vector(unsigned(R_reg) - unsigned(n));
-            else
-                Rbign_temp := '0';
-            end if;
-        when BITDONE => 
-            counter_nxt <= counter + 1;
-        when others => 
-            a_shiftreg_nxt <= a;
-            b_reg_nxt <= b;
-            counter_nxt <= (others => '0');
-            R_reg_nxt <= (others => '0');
-            checkbit_nxt <= '0';
-            Rbign_temp := '0';
+        when LOAD       =>  a_shiftreg_nxt  <= a;
+                            b_reg_nxt       <= b;
+                            counter_nxt     <= (others => '0');
+                            R_reg_nxt       <= (others => '0');
+                            checkbit_nxt    <= '0';
+                            Rbign_temp      := '0'; 
+            
+        when FIRSTCALC  =>  R_reg_nxt       <= R_reg(C_block_size-1 downto 0) & '0';
+                            a_shiftreg_nxt  <= a_shiftreg(C_block_size-2 downto 0) & '0';
+                            checkbit_nxt    <= a_shiftreg(C_block_size-1);
+        
+        when CHECKBITz  =>  if (checkbit = '1') then 
+                                R_reg_nxt   <= std_logic_vector(unsigned(R_reg) + unsigned(b_reg));
+                            end if;
+            
+        when COMPARE_N  =>  if (unsigned(R_reg) >= unsigned(n)) then
+                                Rbign_temp  := '1';
+                                R_reg_nxt   <= std_logic_vector(unsigned(R_reg) - unsigned(n));
+                            else
+                                Rbign_temp  := '0';
+                            end if; 
+            
+        when BITDONE    =>  counter_nxt     <= counter + 1;
+            
+        when others     =>  a_shiftreg_nxt  <= a;
+                            b_reg_nxt       <= b;
+                            counter_nxt     <= (others => '0');
+                            R_reg_nxt       <= (others => '0');
+                            checkbit_nxt    <= '0';
+                            Rbign_temp      := '0';             
     end case;
+    
     Rbign <= Rbign_temp;
+
 end process;
 
-
-R <= R_reg(C_block_size-1 downto 0);
+    R <= R_reg(C_block_size-1 downto 0);
 
 end Behavioral;
